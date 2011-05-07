@@ -39,6 +39,10 @@ EOF;
 		{
 			$this->runTask('se:reload-data', array(), array('env' => $options['env'], 'with-dump' => $options['with-dump']));
 		}
+		elseif($options['rebuild'])
+		{
+			$this->runTask('dm:data', array(), array('env' => $options['env']));
+		}
 
 		if(empty($options['files']))
 		{
