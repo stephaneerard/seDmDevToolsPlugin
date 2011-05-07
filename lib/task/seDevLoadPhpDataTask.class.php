@@ -12,6 +12,8 @@ class seDevLoadPhpDataTask extends dmContextTask
 
 		$this->addOption('files', 'f', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Give files to load');
 		$this->addOption('rebuild', 'b', sfCommandOption::PARAMETER_NONE, 'Rebuilds all');
+		$this->addOption('rebuild-db', 'r', sfCommandOption::PARAMETER_NONE, 'Rebuilds db');
+		$this->addOption('truncate-tables', 'a', sfCommandOption::PARAMETER_NONE, 'Truncates tables');
 		$this->addOption('reload', 'd', sfCommandOption::PARAMETER_NONE, 'Reloads data');
 		$this->addOption('with-dump', 'l', sfCommandOption::PARAMETER_NONE, 'Use data dump');
 
@@ -19,10 +21,27 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->name             = 'load-php-data';
 		$this->briefDescription = 'Loads data from php files';
 		$this->detailedDescription = <<<EOF
-The [ItSsGenerateStayAdminUser|INFO] task does load data from php files
+The [{$this->namespace}:{$this->name}|INFO] task does load data from php files
 Call it with:
 
-  [php symfony seDevGenerateStayAdminUser|INFO]
+  [php symfony {$this->namespace}:{$this->name}|INFO]
+  
+  [--files path/to/file1 --files path/to/file2|INFO]
+  
+  	Will load given files as php files using require
+  	
+  [--rebuild, --rebuild-db|INFO]
+  
+    Will rebuild using dm:setup (and rebuild db if --rebuild-db)
+    
+  [--truncate-tables|INFO]
+  
+    Will truncate tables using dm:truncate-tables
+    
+  [--reload, --with-dump|INFO]
+  
+    Will reload data using se:reload-data (using dump if --with-dump)
+  
 EOF;
 	}
 
@@ -30,9 +49,13 @@ EOF;
 	{
 		$this->withDatabase();
 
-		if($options['rebuild'])
+		if($options['rebuild'] || $options['rebuild-db'])
 		{
-			$this->runTask('se:rebuild-db', array(), array('env' => $options['env']));
+			$this->runTask('se:rebuild-db', array(), array('env' => $options['env'], 'clear-db' => $options['rebuild-db']));
+		}
+		elseif($options['truncate-tables'])
+		{
+			$this->runTask('dm:truncate-tables', array(), array('env' => $options['env']));
 		}
 
 		if($options['reload'] || $options['with-dump'])
@@ -48,9 +71,9 @@ EOF;
 		{
 			$file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'php-fixtures.yml');
 			if(!file_exists($file)) $this->getFilesystem()->touch(array($file));
-			
+				
 			$config = sfYaml::load($file);
-			
+				
 			if(!is_array($config)){
 				return;
 			}
