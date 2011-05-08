@@ -5,24 +5,38 @@
  * @author serard
  *
  */
-class seDmDoctrineFixturesLoader extends dmMicroCache implements IteratorAggregate
+class seDmDoctrineFixturesLoader implements IteratorAggregate
 {
 	protected $folder;
 	protected $files = array();
 	protected $logger;
 	protected $name;
+	protected $topCache;
 	
 	protected $objects = array();
 	
-	public function add($name, $obj)
+	public function setTopCache($cache)
 	{
-		$this->objects[$name] = $obj;
+		$this->topCache = $cache;
+		return $this;
+	}
+	
+	public function add($name, $obj, $topCache = true)
+	{
+		if($topCache)
+		{
+			$this->topCache->add($name, $obj);
+		}
+		else
+		{
+			$this->objects[$name] = $obj;
+		}
 		return $obj;
 	}
 	
 	public function get($name, $default = null)
 	{
-		return isset($this->objects[$name]) ? $this->objects[$name] : $default;
+		return isset($this->objects[$name]) ? $this->objects[$name] : $this->topCache->get($name, $default);
 	}
 	
 	public function setName($name)

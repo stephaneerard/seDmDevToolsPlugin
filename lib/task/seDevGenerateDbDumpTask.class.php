@@ -43,7 +43,7 @@ EOF;
 
 		$file = sprintf('data/dump/data_%s.sql', $options['env']);
 		
-		`mysqldump -u $user -p$password --disable-keys --add-drop-database $db >> $file`;
+		`mysqldump -u $user -p$password --disable-keys --add-drop-database $db > $file`;
 
 	}
 }

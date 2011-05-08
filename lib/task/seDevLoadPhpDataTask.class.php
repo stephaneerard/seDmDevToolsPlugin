@@ -6,10 +6,14 @@
  */
 class seDevLoadPhpDataTask extends dmContextTask
 {
+	
+	protected $cache;
+	
 	protected function configure()
 	{
 		parent::configure();
 
+		$this->addOption('clean', 'c', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Run a clean');
 		$this->addOption('files', 'f', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Give files to load');
 		$this->addOption('rebuild', 'b', sfCommandOption::PARAMETER_NONE, 'Rebuilds all');
 		$this->addOption('rebuild-db', 'r', sfCommandOption::PARAMETER_NONE, 'Rebuilds db');
@@ -49,9 +53,14 @@ EOF;
 	{
 		$this->withDatabase();
 
+		if($options['clean'])
+		{
+			$this->runTask('se:clean');
+		}
+		
 		if($options['rebuild'] || $options['rebuild-db'])
 		{
-			$this->runTask('se:rebuild-db', array(), array('env' => $options['env'], 'clear-db' => $options['rebuild-db']));
+			$this->runTask('dm:setup', array(), array('env' => $options['env'], 'clear-db' => $options['rebuild-db'], 'no-confirmation' => true, 'dont-load-data' => true));
 		}
 		elseif($options['truncate-tables'])
 		{
@@ -60,11 +69,12 @@ EOF;
 
 		if($options['reload'] || $options['with-dump'])
 		{
-			$this->runTask('se:reload-data', array(), array('env' => $options['env'], 'with-dump' => $options['with-dump']));
+			$this->runTask('se:reload-data', array(), array('env' => $options['env'], 'with-dump' => $options['with-dump'], 'with-php-fixtures' => false));
 		}
-		elseif($options['rebuild'])
+		elseif($options['rebuild-db'])
 		{
 			$this->runTask('dm:data', array(), array('env' => $options['env']));
+			$this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
 		}
 
 		if(empty($options['files']))
@@ -88,6 +98,7 @@ EOF;
 			$____files = $options['files'];
 		}
 
+		$this->cache = new seDmDoctrineFixtureTopCache();
 
 		foreach($____files as $php)
 		{
@@ -99,5 +110,10 @@ EOF;
 	public function logPhp($msg, $line)
 	{
 		$this->logSection($line, $msg);
+	}
+	
+	public function getCache()
+	{
+		return $this->cache;
 	}
 }

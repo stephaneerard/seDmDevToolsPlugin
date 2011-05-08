@@ -36,6 +36,7 @@ EOF;
 			$this->runTask('se:load-db-dump', array(), array('env' => $options['env']));
 		}
 		else{
+			$this->runTask('dm:truncate-tables', array(), array('env' => $options['env']));
 			$this->runTask('dm:data', array(), array('env' => $options['env']));
 			$this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
 		}
