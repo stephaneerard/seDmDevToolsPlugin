@@ -1,0 +1,16 @@
+parameters:
+
+
+  dev_module_generator.class:                    seDevToolsModuleGenerator
+  dev_module_generator.plugin_admin_skeleton:    plugins/seDmDevToolsPlugin/data/moduleGenerator/plugin/admin/skeleton
+  dev_module_generator.plugin_front_skeleton:    plugins/seDmDevToolsPlugin/data/moduleGenerator/plugin/front/skeleton
+  dev_module_generator.app_admin_skeleton:       plugins/seDmDevToolsPlugin/data/moduleGenerator/app/admin/skeleton
+  dev_module_generator.app_front_skeleton:       plugins/seDmDevToolsPlugin/data/moduleGenerator/app/admin/skeleton
+  
+  
+services: 
+
+  dev_module_generator:
+    class:                                %dev_module_generator.class%
+    shared:                               true
+    arguments:                           [@service_container, @context, @dispatcher, %dev_module_generator.plugin_admin_skeleton%, %dev_module_generator.plugin_front_skeleton%, %dev_module_generator.app_admin_skeleton%, %dev_module_generator.app_front_skeleton%]
