@@ -110,6 +110,8 @@ EOF;
 				$this->logSection('php', 'loading ' . $php);
 				require $php;
 			}
+			
+			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit();
 		}
 		catch(Exception $up)
 		{
