@@ -19,7 +19,10 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('rebuild-db', 'r', sfCommandOption::PARAMETER_NONE, 'Rebuilds db');
 		$this->addOption('truncate-tables', 'a', sfCommandOption::PARAMETER_NONE, 'Truncates tables');
 		$this->addOption('reload', 'd', sfCommandOption::PARAMETER_NONE, 'Reloads data');
-		$this->addOption('with-dump', 'l', sfCommandOption::PARAMETER_NONE, 'Use data dump');
+		$this->addOption('with-doctrine-fixtures', 'l', sfCommandOption::PARAMETER_NONE, 'Loads doctrine fixtures using config/dm/fixtures.yml');
+		$this->addOption('all-doctrine-fixtures', 'x', sfCommandOption::PARAMETER_NONE, 'Reloads all doctrine fixtures');
+
+		$this->addOption('with-dump', 'w', sfCommandOption::PARAMETER_NONE, 'Use data dump');
 
 		$this->addOption('global-transaction', 'g', sfCommandOption::PARAMETER_NONE, 'Wrap all DB IO into a transaction');
 
@@ -76,8 +79,23 @@ EOF;
 		elseif($options['rebuild-db'])
 		{
 			$this->runTask('dm:data', array(), array('env' => $options['env']));
-			$this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
 		}
+
+		if($options['with-doctrine-fixtures'])
+		{
+			if(!$options['all-doctrine-fixtures'])
+			{
+				$config = sfYaml::load($file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'fixtures.yml'));
+				if(!is_array($config)){
+					$this->logBlock($file . ' doesnt exist', 'ERROR_LARGE');
+					return;
+				}
+				$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => $config['no-integrity'], 'env' => $options['env']));
+			}
+			$this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
+		}
+
+		$this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
 
 		if(empty($options['files']))
 		{
@@ -104,19 +122,19 @@ EOF;
 
 		try{
 			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
-			
+
 			foreach($____files as $php)
 			{
 				$this->logSection('php', 'loading ' . $php);
 				require $php;
 			}
-			
+
 			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit();
 		}
 		catch(Exception $up)
 		{
 			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
-			
+
 			throw $up;
 		}
 	}
