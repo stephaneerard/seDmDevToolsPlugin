@@ -6,9 +6,9 @@
  */
 class seDevLoadPhpDataTask extends dmContextTask
 {
-	
+
 	protected $cache;
-	
+
 	protected function configure()
 	{
 		parent::configure();
@@ -20,6 +20,8 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('truncate-tables', 'a', sfCommandOption::PARAMETER_NONE, 'Truncates tables');
 		$this->addOption('reload', 'd', sfCommandOption::PARAMETER_NONE, 'Reloads data');
 		$this->addOption('with-dump', 'l', sfCommandOption::PARAMETER_NONE, 'Use data dump');
+
+		$this->addOption('global-transaction', 'g', sfCommandOption::PARAMETER_NONE, 'Wrap all DB IO into a transaction');
 
 		$this->namespace        = 'se';
 		$this->name             = 'load-php-data';
@@ -57,7 +59,7 @@ EOF;
 		{
 			$this->runTask('se:clean');
 		}
-		
+
 		if($options['rebuild'] || $options['rebuild-db'])
 		{
 			$this->runTask('dm:setup', array(), array('env' => $options['env'], 'clear-db' => $options['rebuild-db'], 'no-confirmation' => true, 'dont-load-data' => true));
@@ -81,9 +83,9 @@ EOF;
 		{
 			$file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'php-fixtures.yml');
 			if(!file_exists($file)) $this->getFilesystem()->touch(array($file));
-				
+
 			$config = sfYaml::load($file);
-				
+
 			if(!is_array($config)){
 				return;
 			}
@@ -100,10 +102,20 @@ EOF;
 
 		$this->cache = new seDmDoctrineFixtureTopCache();
 
-		foreach($____files as $php)
+		try{
+			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
+			
+			foreach($____files as $php)
+			{
+				$this->logSection('php', 'loading ' . $php);
+				require $php;
+			}
+		}
+		catch(Exception $up)
 		{
-			$this->logSection('php', 'loading ' . $php);
-			require $php;
+			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
+			
+			throw $up;
 		}
 	}
 
@@ -111,7 +123,7 @@ EOF;
 	{
 		$this->logSection($line, $msg);
 	}
-	
+
 	public function getCache()
 	{
 		return $this->cache;
