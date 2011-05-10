@@ -20,7 +20,8 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('truncate-tables', 'a', sfCommandOption::PARAMETER_NONE, 'Truncates tables');
 		$this->addOption('reload', 'd', sfCommandOption::PARAMETER_NONE, 'Reloads data');
 		$this->addOption('with-doctrine-fixtures', 'l', sfCommandOption::PARAMETER_NONE, 'Loads doctrine fixtures using config/dm/fixtures.yml');
-		$this->addOption('all-doctrine-fixtures', 'x', sfCommandOption::PARAMETER_NONE, 'Reloads all doctrine fixtures');
+		$this->addOption('all-doctrine-fixtures', 'x', sfCommandOption::PARAMETER_NONE, 'Loads all doctrine fixtures');
+		$this->addOption('no-dump', 'u', sfCommandOption::PARAMETER_NONE, 'Avoid creation of db dump');
 
 		$this->addOption('with-dump', 'w', sfCommandOption::PARAMETER_NONE, 'Use data dump');
 
@@ -83,19 +84,23 @@ EOF;
 
 		if($options['with-doctrine-fixtures'])
 		{
-			if(!$options['all-doctrine-fixtures'])
+			$loadAll = true;
+				
+			$file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'fixtures.yml');
+			if(file_exists($file))
 			{
-				$config = sfYaml::load($file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'fixtures.yml'));
-				if(!is_array($config)){
-					$this->logBlock($file . ' doesnt exist', 'ERROR_LARGE');
-					return;
+				$loadAll = false;
+				$config = sfYaml::load($file = $file);
+				if(!$options['all-doctrine-fixtures'] && isset($config['data']) && !empty($config['data']))
+				{
+					$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => dmArray::get($config, 'no-integrity', false), 'env' => $options['env']));
 				}
-				$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => $config['no-integrity'], 'env' => $options['env']));
 			}
-			$this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
+			
+			$loadAll && $this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
 		}
 
-		$this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
+		!$options['no-dump'] && $this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
 
 		if(empty($options['files']))
 		{
