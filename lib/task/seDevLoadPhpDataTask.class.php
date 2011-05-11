@@ -22,6 +22,8 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('with-doctrine-fixtures', 'l', sfCommandOption::PARAMETER_NONE, 'Loads doctrine fixtures using config/dm/fixtures.yml');
 		$this->addOption('all-doctrine-fixtures', 'x', sfCommandOption::PARAMETER_NONE, 'Loads all doctrine fixtures');
 		$this->addOption('no-dump', 'u', sfCommandOption::PARAMETER_NONE, 'Avoid creation of db dump');
+		
+		$this->addOption('dry', 'y', sfCommandOption::PARAMETER_NONE, 'Run a dry run. Will rollback at the end');
 
 		$this->addOption('with-dump', 'w', sfCommandOption::PARAMETER_NONE, 'Use data dump');
 
@@ -63,7 +65,7 @@ EOF;
 		{
 			$this->runTask('se:clean');
 		}
-
+		
 		if($options['rebuild'] || $options['rebuild-db'])
 		{
 			$this->runTask('dm:setup', array(), array('env' => $options['env'], 'clear-db' => $options['rebuild-db'], 'no-confirmation' => true, 'dont-load-data' => true));
@@ -126,7 +128,7 @@ EOF;
 		$this->cache = new seDmDoctrineFixtureTopCache();
 
 		try{
-			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
+			($options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
 
 			foreach($____files as $php)
 			{
@@ -134,11 +136,11 @@ EOF;
 				require $php;
 			}
 
-			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit();
+			(!$options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit();
 		}
 		catch(Exception $up)
 		{
-			$options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
+			($options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
 
 			throw $up;
 		}
