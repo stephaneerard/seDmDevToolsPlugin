@@ -148,7 +148,7 @@ EOF;
 		}
 		catch(Exception $up)
 		{
-			(!$options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
+			$transaction && (!$options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
 
 			throw $up;
 		}
