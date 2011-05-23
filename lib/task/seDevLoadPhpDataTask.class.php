@@ -24,12 +24,15 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('no-dump', 'u', sfCommandOption::PARAMETER_NONE, 'Avoid creation of db dump');
 
 		$this->addOption('dry', 'y', sfCommandOption::PARAMETER_NONE, 'Run dry when loading php fixtures');
-		
+
 		$this->addOption('with-dump', 'w', sfCommandOption::PARAMETER_NONE, 'Use data dump');
-		
+
 		$this->addOption('run-after', 'n', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Run these after');
 
 		$this->addOption('global-transaction', 'g', sfCommandOption::PARAMETER_NONE, 'Wrap all DB IO into a transaction');
+
+		$this->addOption('log-records', 'o', sfCommandOption::PARAMETER_NONE, 'Enable logging for all myDoctrineRecord objects');
+		$this->addOption('log-tables', 'e', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Enable logging for given myDoctrineRecord');
 
 		$this->namespace        = 'se';
 		$this->name             = 'load-php-data';
@@ -89,7 +92,7 @@ EOF;
 		if($options['with-doctrine-fixtures'])
 		{
 			$loadAll = true;
-				
+
 			$file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'fixtures.yml');
 			if(file_exists($file))
 			{
@@ -100,7 +103,7 @@ EOF;
 					$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => dmArray::get($config, 'no-integrity', false), 'env' => $options['env']));
 				}
 			}
-			
+
 			$loadAll && $this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
 		}
 
@@ -134,25 +137,45 @@ EOF;
 		try{
 			($options['global-transaction'] || $options['dry']) && $transaction = true && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
 
+			$options['log-records'] && myDoctrineRecord::$logging = true && $this->logSection('log', 'logging all myDoctrineRecords');
+			if($options['log-tables'])
+			{
+				foreach($options['log-tables'] as $table)
+				{
+					$this->logSection('log', 'logging objects of type ' . $table);
+					dmDb::table($table)->setOption('logging', true);
+				}
+			}
+				
+				
 			foreach($____files as $php)
 			{
 				$this->logSection('php', 'loading ' . $php);
 				require $php;
 			}
 
-			$transaction && 
-			($options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit()) 
+			$options['log-records'] && myDoctrineRecord::$logging = false; 
+			if($options['log-tables'])
+			{
+				foreach($options['log-tables'] as $table)
+				{
+					dmDb::table($table)->setOption('logging', false);
+				}
+			}
+
+			$transaction &&
+			($options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit())
 			||
 			($options['dry'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback())
 			;
 		}
 		catch(Exception $up)
 		{
-			(!$options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
+			$transaction && (!$options['dry'] || $options['global-transaction']) && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback();
 
 			throw $up;
 		}
-		
+
 		foreach($options['run-after'] as $run)
 		{
 		  `$run`;
