@@ -137,7 +137,11 @@ EOF;
 		try{
 			($options['global-transaction'] || $options['dry']) && $transaction = true && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
 
-			$options['log-records'] && myDoctrineRecord::$logging = true && $this->logSection('log', 'logging all myDoctrineRecords');
+			if($options['log-records'])
+			{ 
+				myDoctrineRecord::$logging = true;
+				$this->logSection('log', 'logging all myDoctrineRecords');
+			}
 			if($options['log-tables'])
 			{
 				foreach($options['log-tables'] as $table)

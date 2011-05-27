@@ -124,4 +124,9 @@ class seDmDoctrineFixturesLoader implements IteratorAggregate
 	{
 		return new ArrayIterator($this->files);
 	}
+	
+	public function getCache()
+	{
+		return $this->topCache;
+	}
 }
