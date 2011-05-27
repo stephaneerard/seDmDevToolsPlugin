@@ -5,6 +5,11 @@ abstract class myDoctrineRecord extends dmDoctrineRecord
 
 	public static $logging = false;
 
+	public static function setLogging($bool)
+	{
+		self::$logging = (boolean) $bool;
+	}
+	
 	public function log($message)
 	{
 		$this->getEventDispatcher()->notify(new sfEvent($this, 'application.log', array($message)));
@@ -28,7 +33,7 @@ abstract class myDoctrineRecord extends dmDoctrineRecord
 	{
 		if($this->logging())
 		{
-			$this->log(sprintf('method: set, field: %s (load: %s)', $fieldName, $load ? 'true' : 'false'));
+			$this->log(sprintf('method: set, field: %s, value: %s (load: %s)', $fieldName, $value, $load ? 'true' : 'false'));
 		}
 		return parent::set($fieldName, $value, $load);
 	}
