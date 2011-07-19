@@ -113,10 +113,14 @@ class seDevToolsModuleGenerator extends dmMicroCache
 	protected function generatePluginModule($moduleKey, $moduleConfig, $plugin, $app)
 	{
 		$moduleDir = $this->getPluginModuleDir($plugin, $moduleKey, $app);
-		if(file_exists($moduleDir) && $this->dontRegeneratePluginModule($moduleName = $moduleKey . ($app === 'admin' ? 'Admin' : ''))) return;
+		$moduleName = $moduleKey . ($app === 'admin' ? 'Admin' : '');
+		if(file_exists($moduleDir) && $this->dontRegeneratePluginModule($moduleName)) return;
 		$this->logSection('module-generator', sprintf('%s %s %s', $plugin->getName(), $moduleKey, $moduleDir));
 		
-		$this->createModuleDirUsingSkeleton($moduleDir, $this->getSkeletonDir('plugin', $app), $this->getPluginModuleTokens($moduleKey, $plugin, $app), $moduleName, $plugin, $app);
+		if(!$this->options['dry'])
+		{
+			$this->createModuleDirUsingSkeleton($moduleDir, $this->getSkeletonDir('plugin', $app), $this->getPluginModuleTokens($moduleKey, $plugin, $app), $moduleName, $plugin, $app);
+		}
 	}
 	
 	protected function getPluginModuleTokens($moduleKey, $plugin, $app)
@@ -154,7 +158,6 @@ class seDevToolsModuleGenerator extends dmMicroCache
 	
 	protected function dontRegeneratePluginModule($moduleKey)
 	{
-		return false;
 		return !dmArray::get($this->options['regenerate-all'], $moduleKey, false);
 	}
 

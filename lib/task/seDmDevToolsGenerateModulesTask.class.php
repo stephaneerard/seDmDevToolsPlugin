@@ -11,6 +11,8 @@ class seDmDevToolsGenerateModulesTask extends dmContextTask
 		$this->addOption('delete', 'd', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Delete & force regeneration of modules ($plugin|$module');
 		$this->addOption('regenerate-all', 'r', sfCommandOption::PARAMETER_NONE, 'Regenerates all found modules (BE CAREFULL)');
 		
+		$this->addOption('dry', null, sfCommandOption::PARAMETER_NONE, 'Run without modification');
+		
 		$this->addOption('plugin-admin-action', null, sfCommandOption::PARAMETER_OPTIONAL, 'The plugin module action extending class', 'dmAdminBaseActions');
 		$this->addOption('plugin-front-action', null, sfCommandOption::PARAMETER_OPTIONAL, 'The plugin module action extending class', 'myFrontModuleActions');
 		

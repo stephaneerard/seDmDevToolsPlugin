@@ -32,6 +32,9 @@ class seDevLoadPhpDataTask extends dmContextTask
 
 		$this->addOption('global-transaction', 'g', sfCommandOption::PARAMETER_NONE, 'Wrap all DB IO into a transaction');
 
+		$this->addOption('log-records', 'o', sfCommandOption::PARAMETER_NONE, 'Enable logging for all myDoctrineRecord objects');
+		$this->addOption('log-tables', 'e', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Enable logging for given myDoctrineRecord');
+
 		$this->namespace        = 'se';
 		$this->name             = 'load-php-data';
 		$this->briefDescription = 'Loads data from php files';
@@ -101,19 +104,18 @@ EOF;
 					$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => dmArray::get($config, 'no-integrity', false), 'env' => $options['env']));
 				}
 			}
-				
 			$loadAll && $this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
 		}
 
 		if(!$options['no-dump'])
 		{
 			$_options = array('env' => $options['env']);
-				
+
 			if($options['phase'])
 			{
 				$_options['suffix'] = '_' . $options['phase'];
 			}
-				
+
 			$this->runTask('se:generate-db-dump', array(), $_options);
 		}
 
@@ -134,7 +136,7 @@ EOF;
 			}
 
 			$____files = false;
-				
+
 			if($options['phase'])
 			{
 				if(!isset($config['phases'][$options['phase']]))
@@ -161,6 +163,20 @@ EOF;
 		try{
 			($options['global-transaction'] || $options['dry']) && $transaction = true && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
 
+			if($options['log-records'])
+			{
+				myDoctrineRecord::$logging = true;
+				$this->logSection('log', 'logging all myDoctrineRecords');
+			}
+			if($options['log-tables'])
+			{
+				foreach($options['log-tables'] as $table)
+				{
+					$this->logSection('log', 'logging objects of type ' . $table);
+					dmDb::table($table)->setOption('logging', true);
+				}
+			}
+
 			if($____files)
 			{
 				foreach($____files as $php)
@@ -171,7 +187,6 @@ EOF;
 			}
 			else
 			{
-
 				$_arguments = $arguments;
 				array_shift($_arguments);
 
