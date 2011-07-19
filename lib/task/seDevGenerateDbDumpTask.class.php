@@ -11,6 +11,7 @@ class seDevGenerateDbDumpTask extends dmContextTask
 		parent::configure();
 		
 		$this->addOption('file', 'f', sfCommandOption::PARAMETER_OPTIONAL, 'File to dump to', false);
+		$this->addOption('suffix', 's', sfCommandOption::PARAMETER_OPTIONAL, 'Suffix for generated file', false);
 
 		$this->namespace        = 'se';
 		$this->name             = 'generate-db-dump';
@@ -30,7 +31,7 @@ EOF;
 		$this->logSection('se', 'generating dump of db');
 		if(!$options['file'])
 		{
-			$file = sprintf('data/dump/data_%s.sql', $options['env']);
+			$file = sprintf('data/dump/data_%s%s.sql', $options['env'], $options['suffix']);
 		}
 		else
 		{

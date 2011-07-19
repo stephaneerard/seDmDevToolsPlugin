@@ -22,11 +22,12 @@ class seDevLoadPhpDataTask extends dmContextTask
 		$this->addOption('with-doctrine-fixtures', 'l', sfCommandOption::PARAMETER_NONE, 'Loads doctrine fixtures using config/dm/fixtures.yml');
 		$this->addOption('all-doctrine-fixtures', 'x', sfCommandOption::PARAMETER_NONE, 'Loads all doctrine fixtures');
 		$this->addOption('no-dump', 'u', sfCommandOption::PARAMETER_NONE, 'Avoid creation of db dump');
+		$this->addOption('phase', 'p', sfCommandOption::PARAMETER_OPTIONAL, 'Which phase to load');
 
 		$this->addOption('dry', 'y', sfCommandOption::PARAMETER_NONE, 'Run dry when loading php fixtures');
-		
+
 		$this->addOption('with-dump', 'w', sfCommandOption::PARAMETER_NONE, 'Use data dump');
-		
+
 		$this->addOption('run-after', 'n', sfCommandOption::PARAMETER_OPTIONAL | sfCommandOption::IS_ARRAY, 'Run these after');
 
 		$this->addOption('global-transaction', 'g', sfCommandOption::PARAMETER_NONE, 'Wrap all DB IO into a transaction');
@@ -89,7 +90,7 @@ EOF;
 		if($options['with-doctrine-fixtures'])
 		{
 			$loadAll = true;
-				
+
 			$file = dmOs::join(sfConfig::get('sf_root_dir'), 'config', 'dm', 'fixtures.yml');
 			if(file_exists($file))
 			{
@@ -100,11 +101,21 @@ EOF;
 					$this->runTask('dm:data-load', array('dir_or_file'=> $config['data']), array('append' => true, 'no-integrity' => dmArray::get($config, 'no-integrity', false), 'env' => $options['env']));
 				}
 			}
-			
+				
 			$loadAll && $this->runTask('dm:data-load', array(), array('append' => true, 'no-integrity' => false, 'env' => $options['env']));
 		}
 
-		!$options['no-dump'] && $this->runTask('se:generate-db-dump', array(), array('env' => $options['env']));
+		if(!$options['no-dump'])
+		{
+			$_options = array('env' => $options['env']);
+				
+			if($options['phase'])
+			{
+				$_options['suffix'] = '_' . $options['phase'];
+			}
+				
+			$this->runTask('se:generate-db-dump', array(), $_options);
+		}
 
 		if(empty($options['files']))
 		{
@@ -117,14 +128,30 @@ EOF;
 				return;
 			}
 
-			if(!isset($config['php']))
+			if(!isset($config['phases']))
 			{
-				$this->logBlock($file . ' does not contain any php: key');
+				$this->logBlock($file . ' does not contain any phases: key with indexed values');
 			}
 
-			$____files = $config['php'];
-		}else{
+			$____files = false;
+				
+			if($options['phase'])
+			{
+				if(!isset($config['phases'][$options['phase']]))
+				{
+					throw new Exception('Phase ' . $options['phase'] . ' is not set in conf file');
+				}
+				else
+				{
+					$____files = $config['phases'][$options['phase']];
+				}
+			}
+		}elseif(!empty($options['files']))
+		{
 			$____files = $options['files'];
+		}else{
+			//we have to get through all phases later on
+			$____files = false;
 		}
 
 		$this->cache = new seDmDoctrineFixtureTopCache();
@@ -134,14 +161,31 @@ EOF;
 		try{
 			($options['global-transaction'] || $options['dry']) && $transaction = true && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->beginTransaction();
 
-			foreach($____files as $php)
+			if($____files)
 			{
-				$this->logSection('php', 'loading ' . $php);
-				require $php;
+				foreach($____files as $php)
+				{
+					$this->logSection('php', 'loading ' . $php);
+					require $php;
+				}
+			}
+			else
+			{
+
+				$_arguments = $arguments;
+				array_shift($_arguments);
+
+				foreach($config['phases'] as $i => $files)
+				{
+					$this->logSection('phases', '	' . $i);
+					$this->runTask('se:load-php-data',
+					$_arguments,
+					array_merge($options, array('phase' => $i, 'rebuild-db' => false, 'reload' => false, 'with-doctrine-fixtures' => false, 'clean' => false, 'all-doctrine-fixtures' => false, 'files' => array(), )));
+				}
 			}
 
-			$transaction && 
-			($options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit()) 
+			$transaction &&
+			($options['global-transaction'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->commit())
 			||
 			($options['dry'] && $this->withDatabase()->getDatabase('doctrine')->getDoctrineConnection()->rollback())
 			;
@@ -152,7 +196,7 @@ EOF;
 
 			throw $up;
 		}
-		
+
 		foreach($options['run-after'] as $run)
 		{
 		  `$run`;
@@ -167,5 +211,16 @@ EOF;
 	public function getCache()
 	{
 		return $this->cache;
+	}
+
+	public function add($name, $value)
+	{
+		$this->cache->add($name, $value);
+		return $value;
+	}
+
+	public function get($name)
+	{
+		return $this->cache->get($name);
 	}
 }
